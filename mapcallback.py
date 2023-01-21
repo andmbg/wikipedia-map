@@ -246,6 +246,7 @@ app.layout = html.Div([
                     "padding": "15px 15px 15px 15px",
                     "borderRadius": "5px",
                     "marginTop": "15px",
+                    "max-height": "50vh",
                     "overflow-y": "scroll"
                 }),
 
