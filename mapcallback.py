@@ -5,7 +5,6 @@ import plotly.express as px
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output
 import numpy as np
-from datetime import datetime
 import re
 
 pd.options.mode.use_inf_as_na = True
@@ -14,13 +13,6 @@ init_loc = dict(
     lat = 51.4752,
     lon = 7.4376
 )
-
-def __DEBUG__(msg):
-    dbtime = datetime.now().strftime("%H:%M:%S")
-    with open("log.txt", "a") as f:
-        f.write(f"\n{dbtime} -- {msg}")
-
-
 
 def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
     def get_pagelist_around_location(lat, lon, radius=10000, gslimit=500):
@@ -38,8 +30,6 @@ def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
         response_dict = json.loads(response.text)
         out = pd.json_normalize(response_dict["query"]["geosearch"])
         out = out[ ["pageid", "title", "lat", "lon"] ]
-        __DEBUG__(f"[get_pagelist] queried around ({np.round(lat,5)},{np.round(lon,5)}).")
-        __DEBUG__(f"               received {len(out)} articles, {len(response.text)} bytes.")
         return( out.set_index("pageid") )
     
     def get_viewcounts(ids, days=30):
@@ -57,7 +47,6 @@ def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
             }
             response = requests.get(url, params = query_params)
             response_dict = json.loads(response.text)
-            __DEBUG__(f"[query_views] queried {len(ids)} ids; received {len(response.text)} bytes.")
             response_df = pd.json_normalize(response_dict["query"]["pages"])
             views = response_df.iloc[:,0:3]
             views["views"] = response_df.filter(regex="pageviews").sum(axis=1)
@@ -89,14 +78,11 @@ def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
     new_pagelist = get_pagelist_around_location(lat, lon, radius=radius, gslimit=gslimit)
     new_pagelist_filtered = new_pagelist.loc[ new_pagelist.index.difference(data.index) ]
     if len(new_pagelist_filtered) == 0:
-        __DEBUG__("[add_to_df] relocated but found no new articles.")
         return(data)
     else:
         new_data = new_pagelist_filtered.join(get_viewcounts(new_pagelist_filtered.index))
         new_data["log_views"] = list(map(lambda x: 0 if x == 0 else np.log2(x), new_data.views))
         out = pd.concat([data, new_data])
-        __DEBUG__(f"[add_to_df] found {len(new_data)} new articles.")
-        __DEBUG__(f"            df_master now has {len(out)} entries.")
     return(out)
 
 
@@ -192,8 +178,6 @@ def get_article_abstract(id, characters):
     
 
 
-__DEBUG__("\n=====================")
-
 df = None
 
 colorscale = [
@@ -261,7 +245,8 @@ app.layout = html.Div([
                     "backgroundColor": dash_bgcolor,
                     "padding": "15px 15px 15px 15px",
                     "borderRadius": "5px",
-                    "marginTop": "15px"                    
+                    "marginTop": "15px",
+                    "overflow-y": "scroll"
                 }),
 
         ])
@@ -295,7 +280,6 @@ def update_app(slider, relayout, click):
                           lon = current_location["lon"],
                           data = df)
     slider = tuple(map(lambda x: x*np.max(df.log_views), slider))
-    __DEBUG__(f"slider: {slider[1]}")
     hist_df = histogram_df(df)
     hist_df.selected = ((hist_df.binleft >= slider[0]) &
                         (hist_df.binright <= slider[1]))
@@ -363,8 +347,6 @@ def update_app(slider, relayout, click):
                       )
     fig["data"][0]["hovertemplate"] = "<b>%{customdata[0]}</b><br><br>Aufrufe in den letzten 30 Tagen: %{customdata[1]}<extra></extra>"
     fig['layout']['uirevision'] = 'something' # sort of keep zoom/position on data changes
-    
-    __DEBUG__("[-main-] map and hist redrawn.")
     
     return fig, hist, wiki_info
 
