@@ -138,7 +138,6 @@ def filter_by_slider(data, slider_values):
 
 
 def get_article_abstract(id, characters):
-    __DEBUG__("[get_article_abstract]")
     url = "https://de.wikipedia.org/w/api.php"
     query_params = {
         "action": "query",
@@ -157,7 +156,14 @@ def get_article_abstract(id, characters):
         abstract += " " + sentences.pop(0)
     abstract += " " + sentences[0] if len(abstract + sentences[0]) < 750 else ""
     
+    title = response_dict.get("query").get("pages")[0].get("title")
+    article_link = html.A(href = f"https://de.wikipedia.org/wiki/{title}",
+                          children = "zum Artikel")
+    
     wiki_image_link = response_dict.get("query").get("pages")[0].get("pageimage")
+    
+    
+    
     if wiki_image_link is not None:
         wiki_image_link = "Datei:" + wiki_image_link
         image_query_params = {
@@ -176,9 +182,11 @@ def get_article_abstract(id, characters):
                                  "marginLeft": "auto",
                                  "marginRight": "auto",
                                  "display": "block"} ),
-               html.P(abstract)]
+               html.P(abstract),
+               article_link]
     else:
-        out = html.P(abstract)
+        out = [html.P(abstract),
+               article_link]
 
     return(out)
     
