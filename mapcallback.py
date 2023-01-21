@@ -293,6 +293,7 @@ def update_app(slider, relayout, click):
                         (hist_df.binright <= slider[1]))
     plot_df = filter_by_slider(df, slider)
     plot_df = plot_df.reset_index()
+    plot_df["dotsize"] = plot_df.views.replace(0, 1)
     
 
 
@@ -336,7 +337,7 @@ def update_app(slider, relayout, click):
                             color = "log_views",
                             color_continuous_scale = colorscale,
                             range_color = (0, max(df.log_views)),
-                            size = "log_views",
+                            size = "dotsize",
                             hover_name = "title",
                             hover_data = ["views"],
                             mapbox_style="carto-darkmatter",
