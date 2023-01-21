@@ -10,8 +10,8 @@ import re
 pd.options.mode.use_inf_as_na = True
 
 init_loc = dict(
-    lat = 51.4752,
-    lon = 7.4376
+    lat = 52.516389,
+    lon = 13.377778
 )
 
 def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
@@ -335,7 +335,7 @@ def update_app(slider, relayout, click):
                             mapbox_style="carto-darkmatter",
                             center={"lat": current_location["lat"], 
                                     "lon": current_location["lon"]},
-                            zoom = 18)
+                            zoom = 15)
     fig.update_layout(margin = dict(t=0, r=0, b=0, l=0),
                       coloraxis_showscale=False,
                       uirevision = "Hurz"
