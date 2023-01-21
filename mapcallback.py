@@ -7,12 +7,13 @@ from dash.dependencies import Input, Output
 import numpy as np
 import sqlite3
 from datetime import datetime
+import re
 
 pd.options.mode.use_inf_as_na = True
 
 init_loc = dict(
-    lat = 52.69039,
-    lon = 13.17309
+    lat = 51.472181,
+    lon = 7.5327
 )
 
 def __DEBUG__(msg):
@@ -22,7 +23,7 @@ def __DEBUG__(msg):
 
 
 
-def get_or_extend_df(lat, lon, data=None, radius=1000, gslimit=500):
+def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
     def get_pagelist_around_location(lat, lon, radius=10000, gslimit=500):
         url = "https://de.wikipedia.org/w/api.php"
         query_params = {
@@ -130,10 +131,11 @@ def histogram_df(data, column="log_views", bins=20):
 
 
 def filter_by_hist(data, hist_df):
+    data["index_col"] = data.index
     conn = sqlite3.connect(":memory:")
     hist_df.to_sql("hist", conn, index = False)
     data.to_sql("data", conn, index = False)
-    query = """select title, lat, lon, views, log_views
+    query = """select index_col, title, lat, lon, views, log_views
                from data, hist
                where data.log_views between hist.binleft and hist.binright
                and hist.selected = True
@@ -141,6 +143,50 @@ def filter_by_hist(data, hist_df):
     out = pd.read_sql_query(query, conn)
     return(out)
 
+def get_article_abstract(id, characters):
+    url = "https://de.wikipedia.org/w/api.php"
+    query_params = {
+        "action": "query",
+        "format": "json",
+        "prop": "pageimages|cirrusdoc",
+        "pageids": str(id),
+        "formatversion": "2",
+        "cdincludes": "all"
+        }
+    response = requests.get(url, params = query_params)
+    response_dict = json.loads(response.text)
+    pagetext = response_dict.get("query").get("pages")[0].get("cirrusdoc")[0].get("source").get("text")
+    sentences = re.split("(?<=[^0-9][.?!]) (?=[A-Z])", pagetext)
+    abstract = ""
+    while len(abstract) < 500:
+        abstract += " " + sentences.pop(0)
+    abstract += " " + sentences[0] if len(abstract + sentences[0]) < 750 else ""
+    
+    wiki_image_link = response_dict.get("query").get("pages")[0].get("pageimage")
+    if wiki_image_link is not None:
+        wiki_image_link = "Datei:" + wiki_image_link
+        image_query_params = {
+            "action": "query",
+            "format": "json",
+            "prop": "imageinfo",
+            "iiprop": "url",
+            "titles": wiki_image_link,
+            "formatversion": "2"
+            }
+        img_response = requests.get(url, params = image_query_params)
+        img_dict = json.loads(img_response.text)
+        img_url = img_dict.get("query").get("pages")[0].get("imageinfo")[0].get("url")
+        out = [html.Img(src = img_url,
+                        style = {"width": "80%",
+                                 "marginLeft": "auto",
+                                 "marginRight": "auto",
+                                 "display": "block"} ),
+               html.P(abstract)]
+    else:
+        out = html.P(abstract)
+
+    return(out)
+    
 
 
 __DEBUG__("\n=====================")
@@ -173,20 +219,6 @@ app.layout = html.Div([
         children = [
             dcc.Graph(id="map")
         ]),
-
-    # get_articles button at the top left
-    html.Div(
-        style = {
-            "position": "fixed",
-            "left": "15px",
-            "top": "15px",
-        },
-        children = [
-            html.Button('df speichern',
-                        id = 'button',
-                        n_clicks = 0)
-        ]
-    ),
 
     # sidebar right
     html.Div(
@@ -231,14 +263,6 @@ app.layout = html.Div([
                     "marginTop": "15px"                    
                 }),
 
-            html.Div([
-                html.P(id = "displayB")],
-                style = {
-                    "backgroundColor": dash_bgcolor,
-                    "padding": "15px 15px 15px 15px",
-                    "borderRadius": "5px",
-                    "marginTop": "15px"
-               })
         ])
 ])
 
@@ -246,37 +270,38 @@ app.layout = html.Div([
     Output("map", "figure"),
     Output("histogram", "figure"),
     Output("displayA", "children"),
-    Output("displayB", "children"),
     [Input('slider', 'value')],
     Input("map", "relayoutData"),
-    Input("map", "clickData"),
-    Input("button", "n_clicks"), 
+    Input("map", "clickData") 
 )
-def update_app(slider, relayout, click, n_clicks):
+def update_app(slider, relayout, click):
     
     global df
-
     if relayout != None and relayout != {"autosize": True}:
         current_location["lat"] = relayout.get("mapbox.center").get("lat")
         current_location["lon"] = relayout.get("mapbox.center").get("lon")
-    
-    upperdisplay = f"{click}"
 
-    # update article data:
+    # Wikipedia info display:    
+    if click is not None:
+        pageid = click['points'][0]['customdata'][2]
+        wiki_info = get_article_abstract(pageid, 500)
+    else:
+        wiki_info = "Punkte anklicken für Infos"
+
+    # add new points to df, update histogram data and filtering:
     df = get_or_extend_df(lat = current_location["lat"],
                           lon = current_location["lon"],
-                          data = df,
-                          radius = 10000)
-    
+                          data = df)
     df["log_views"] = list(map(lambda x: 0 if x == 0 else np.log2(x), df.views))
     hist_df = histogram_df(df)
+    hist_df.selected = ((hist_df.scaleleft >= slider[0]) &
+                        (hist_df.scaleright <= slider[1]))
+    plot_df = filter_by_hist(df, hist_df)
     
-    lowerdisplay = f"{click}"
 
-    # update histogram dataframe:
-    lower, upper = slider
-    hist_df.selected = (hist_df.scaleleft >= lower) & (hist_df.scaleright <= upper)
-    
+
+
+
     # render histogram:
     hist = px.bar(hist_df,
         x = "bincenter",
@@ -310,12 +335,7 @@ def update_app(slider, relayout, click, n_clicks):
         hovertemplate = "%{customdata[0]}-%{customdata[1]} Aufrufe: %{y} versch. Orte"
     )
 
-
-
-    # Map
-    ### update data
-    plot_df = filter_by_hist(df, hist_df)
-    ### rendering:
+    # render map:
     fig = px.scatter_mapbox(plot_df,
                             lat = "lat",
                             lon = "lon",
@@ -336,19 +356,14 @@ def update_app(slider, relayout, click, n_clicks):
     fig.update_traces(marker_sizemode = "area",
                       marker_sizeref = 5,
                       marker_sizemin = 3,
-                      customdata = np.stack([plot_df.title, plot_df.views]).transpose()
+                      customdata = np.stack([plot_df.title, plot_df.views, plot_df.index_col]).transpose()
                       )
-    #fig.update_geos(fitbounds = False)
     fig["data"][0]["hovertemplate"] = "<b>%{customdata[0]}</b><br><br>Aufrufe in den letzten 30 Tagen: %{customdata[1]}<extra></extra>"
     fig['layout']['uirevision'] = 'something' # sort of keep zoom/position on data changes
     
     __DEBUG__("[-main-] map and hist redrawn.")
     
-    if n_clicks == 1:
-        df.to_csv("df.csv")
-    
-    
-    return fig, hist, upperdisplay, lowerdisplay
+    return fig, hist, wiki_info
 
 
 if __name__ == '__main__':

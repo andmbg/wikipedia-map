@@ -1,0 +1,15 @@
+#slider {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+body{
+    padding: 0px;
+    margin: 0px;
+    font-family: Arial, Noto Sans, Droid Sans, Sans serif;
+}
+
+#map {
+    height: 100vh;
+}
+
