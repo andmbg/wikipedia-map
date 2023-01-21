@@ -5,15 +5,14 @@ import plotly.express as px
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output
 import numpy as np
-import sqlite3
 from datetime import datetime
 import re
 
 pd.options.mode.use_inf_as_na = True
 
 init_loc = dict(
-    lat = 51.472181,
-    lon = 7.5327
+    lat = 51.4752,
+    lon = 7.4376
 )
 
 def __DEBUG__(msg):
@@ -85,6 +84,7 @@ def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
     if data is None: # start new df
         out = get_pagelist_around_location(lat, lon, radius)
         out = out.join(get_viewcounts(out.index))
+        out["log_views"] = list(map(lambda x: 0 if x == 0 else np.log2(x), out.views))
         return(out)
     new_pagelist = get_pagelist_around_location(lat, lon, radius=radius, gslimit=gslimit)
     new_pagelist_filtered = new_pagelist.loc[ new_pagelist.index.difference(data.index) ]
@@ -93,6 +93,7 @@ def get_or_extend_df(lat, lon, data=None, radius=10000, gslimit=500):
         return(data)
     else:
         new_data = new_pagelist_filtered.join(get_viewcounts(new_pagelist_filtered.index))
+        new_data["log_views"] = list(map(lambda x: 0 if x == 0 else np.log2(x), new_data.views))
         out = pd.concat([data, new_data])
         __DEBUG__(f"[add_to_df] found {len(new_data)} new articles.")
         __DEBUG__(f"            df_master now has {len(out)} entries.")
@@ -110,40 +111,34 @@ def opacity(selected):
 
 def histogram_df(data, column="log_views", bins=20):
     data_zeroless = data.loc[data.views > 0]
-    max_log_views = np.max(data_zeroless.log_views)
+    #max_log_views = np.max(data_zeroless.log_views)
     counts, boundaries = np.histogram(data_zeroless[column], bins=bins)
     bincenters = 0.5 * (boundaries[:-1] + boundaries[1:])
     binlefts = boundaries[:-1]
     binrights = boundaries[1:]
-    scaleleft = binlefts / max_log_views
-    scaleright = binrights / max_log_views
+    #scaleleft = binlefts / max_log_views
+    #scaleright = binrights / max_log_views
     
     out = pd.DataFrame({
       "binleft": binlefts,
       "binright": binrights,
       "bincenter": bincenters,
-      "scaleleft": scaleleft,
-      "scaleright": scaleright,
+      #"scaleleft": scaleleft,
+      #"scaleright": scaleright,
       "count": counts,
       "selected": True })
     return(out)
 
 
 
-def filter_by_hist(data, hist_df):
-    data["index_col"] = data.index
-    conn = sqlite3.connect(":memory:")
-    hist_df.to_sql("hist", conn, index = False)
-    data.to_sql("data", conn, index = False)
-    query = """select index_col, title, lat, lon, views, log_views
-               from data, hist
-               where data.log_views between hist.binleft and hist.binright
-               and hist.selected = True
-            """
-    out = pd.read_sql_query(query, conn)
-    return(out)
+def filter_by_slider(data, slider_values):
+    return data[ (data.log_views >= slider_values[0]) & 
+                 (data.log_views <= slider_values[1]) ]
+
+
 
 def get_article_abstract(id, characters):
+    __DEBUG__("[get_article_abstract]")
     url = "https://de.wikipedia.org/w/api.php"
     query_params = {
         "action": "query",
@@ -248,9 +243,7 @@ app.layout = html.Div([
                         step = .01,
                         value = [0, 1],
                         marks = {"0": "",
-                                 "1": ""},
-                        tooltip={"placement": "bottom",
-                                 "always_visible": True })
+                                 "1": ""})
                     ]
             ),
 
@@ -277,6 +270,7 @@ app.layout = html.Div([
 def update_app(slider, relayout, click):
     
     global df
+    
     if relayout != None and relayout != {"autosize": True}:
         current_location["lat"] = relayout.get("mapbox.center").get("lat")
         current_location["lon"] = relayout.get("mapbox.center").get("lon")
@@ -292,14 +286,14 @@ def update_app(slider, relayout, click):
     df = get_or_extend_df(lat = current_location["lat"],
                           lon = current_location["lon"],
                           data = df)
-    df["log_views"] = list(map(lambda x: 0 if x == 0 else np.log2(x), df.views))
+    slider = tuple(map(lambda x: x*np.max(df.log_views), slider))
+    __DEBUG__(f"slider: {slider[1]}")
     hist_df = histogram_df(df)
-    hist_df.selected = ((hist_df.scaleleft >= slider[0]) &
-                        (hist_df.scaleright <= slider[1]))
-    plot_df = filter_by_hist(df, hist_df)
+    hist_df.selected = ((hist_df.binleft >= slider[0]) &
+                        (hist_df.binright <= slider[1]))
+    plot_df = filter_by_slider(df, slider)
+    plot_df = plot_df.reset_index()
     
-
-
 
 
     # render histogram:
@@ -342,7 +336,7 @@ def update_app(slider, relayout, click):
                             color = "log_views",
                             color_continuous_scale = colorscale,
                             range_color = (0, max(df.log_views)),
-                            size = "views",
+                            size = "log_views",
                             hover_name = "title",
                             hover_data = ["views"],
                             mapbox_style="carto-darkmatter",
@@ -356,7 +350,7 @@ def update_app(slider, relayout, click):
     fig.update_traces(marker_sizemode = "area",
                       marker_sizeref = 5,
                       marker_sizemin = 3,
-                      customdata = np.stack([plot_df.title, plot_df.views, plot_df.index_col]).transpose()
+                      customdata = np.stack([plot_df.title, plot_df.views, plot_df.pageid]).transpose()
                       )
     fig["data"][0]["hovertemplate"] = "<b>%{customdata[0]}</b><br><br>Aufrufe in den letzten 30 Tagen: %{customdata[1]}<extra></extra>"
     fig['layout']['uirevision'] = 'something' # sort of keep zoom/position on data changes
