@@ -233,7 +233,32 @@ app.layout = html.Div([
                     "overflow-y": "scroll"
                 }),
 
-        ])
+        ]),
+
+    html.Div(
+        id="info",
+        style={'position': "fixed",
+               'width': "20%",
+               'left': "0px",
+               'top': "15px",
+               'marginLeft': "30px",
+               'color': "white",
+               "backgroundColor": dash_bgcolor,
+               "borderRadius": "5px",
+               "padding": "15px 15px 15px 15px",
+               "marginTop": "15px",
+               "max-height": "50vh",
+               "overflow-y": "scroll"},
+        children=[
+            html.P("This map points out all Wikipedia articles in an area that are marked with a geolocation. The color "
+                   "and size correspond to the number of article views over the last 30 days. Click on a point to see a "
+                   "preview of an article. The histogram at the top right shows the article view distribution of all"
+                   "articles currently being displayed and allows filtering by importance."),
+            html.P("Note that the Wikimedia API rate limit restricts each query to a radius of 10 km or 500 articles around "
+                   "the given location.")
+        ]
+
+    )
 ])
 
 
