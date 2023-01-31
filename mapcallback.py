@@ -272,7 +272,7 @@ app.layout = html.Div([
                },
         children=[
             html.A(href="localhost",
-                   children=[html.Img(src="https://upload.wikimedia.org/wikipedia/commons/0/0b/English_language.svg",
+                   children=[html.Img(src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
                                       width="50px")]
                    )]
     )
