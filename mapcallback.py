@@ -271,7 +271,7 @@ app.layout = html.Div([
                "marginTop": "15px",
                },
         children=[
-            html.A(href="localhost",
+            html.A(href="https://heftydachshund.pythonanywhere.com",
                    children=[html.Img(src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
                                       width="50px")]
                    )]
@@ -378,4 +378,4 @@ def update_app(slider, relayout, click):
 
 if __name__ == "__main__":
     app.run_server(host="0.0.0.0",
-                   debug=True)
+                   debug=False)
