@@ -250,14 +250,31 @@ app.layout = html.Div([
                "max-height": "50vh",
                "overflow-y": "scroll"},
         children=[
-            html.P("This map points out all Wikipedia articles in an area that are marked with a geolocation. The color "
-                   "and size correspond to the number of article views over the last 30 days. Click on a point to see a "
-                   "preview of an article. The histogram at the top right shows the article view distribution of all"
-                   "articles currently being displayed and allows filtering by importance."),
-            html.P("Note that the Wikimedia API rate limit restricts each query to a radius of 10 km or 500 articles around "
-                   "the given location.")
+            html.P("Diese Karte zeigt alle Artikel der deutschsprachigen Wikipedia, die mit Geodaten verbunden sind und "
+                   "in dieser Gegend verortet sind. Farbe und Größe entsprechen der Zahl der Aufrufe in den letzten 30 "
+                   "Tagen. Klicken Sie auf einen Punkt, um eine Artikelvorschau zu sehen. Das Histogramm oben rechts "
+                   "zeigt die Verteilung der Aufrufstatistik für alle aktuell angezeigten Artikel und erlaubt das Filtern "
+                   "nach Häufigkeit der Aufrufe."),
+            html.P("Die API der Wikipedia ist in der Bandbreite beschränkt und erlaubt nur den Abruf von Artikeln im Umkreis "
+                   "von 10 km oder maximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen Version.")
         ]
 
+    ),
+
+    html.Div(
+        id="switch_language",
+        style={'position': "fixed",
+               'left': "50vw",
+               'top': "15px",
+               'color': "white",
+               "borderRadius": "5px",
+               "marginTop": "15px",
+               },
+        children=[
+            html.A(href="localhost",
+                   children=[html.Img(src="https://upload.wikimedia.org/wikipedia/commons/0/0b/English_language.svg",
+                                      width="50px")]
+                   )]
     )
 ])
 
