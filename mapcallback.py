@@ -271,7 +271,7 @@ app.layout = html.Div([
                "marginTop": "15px",
                },
         children=[
-            html.A(href="https://heftydachshund.pythonanywhere.com",
+            html.A(href="https://enormousdingo.pythonanywhere.com",
                    children=[html.Img(src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
                                       width="50px")]
                    )]
