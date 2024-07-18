@@ -9,15 +9,19 @@ import re
 
 from .src.utils import render_histogram, get_or_extend_df, get_map, get_article_preview
 
-init_location = {"lat": 52.516389, "lon": 13.377778}
-pd.options.mode.use_inf_as_na = True
+pd.options.mode.use_inf_as_na = True  # deprecated TODO: inf zu NA konvertieren
 df = None
 
 
 def init_dashboard(
-    server,
-    init_location=init_location
+    flask_app, route, init_location={"lat": 52.516389, "lon": 13.377778}
 ):
+    app = Dash(
+        __name__,
+        server=flask_app,
+        routes_pathname_prefix=route,
+    )
+
     dash_bgcolor = "rgba(100,100,100, .8)"
 
     # initialize the app with a first location and view:
@@ -27,125 +31,123 @@ def init_dashboard(
         lon=init_location["lon"],
     )
 
-    app = Dash(
-        __name__,
-        server=server,
-        routes_pathname_prefix="/wikimap/",
-    )
-
-    app.layout = html.Div([
-
-        dcc.Store(
-            id="known_entries",
-            data=point_collection_df.to_dict("records"),
-        ),
-        dcc.Store(
-            id="location",
-            data=init_location
-        ),
-
-        # Map background
-        html.Div(
-            style={
-                "width": "100vw",
-                "height": "100vh",
-            },
-            children=[
-                dcc.Graph(id="map",
-                          style={"height": "100%"})
-            ]),
-
-        # sidebar right
-        html.Div(
-            id="sidebar",
-            style={
-                "position": "fixed",
-                "width": "20%",
-                "right": "0px",
-                "top": "15px",
-                "marginRight": "30px",
-                "color": "white"
-            },
-            children=[
-                html.Div(
-                    id="hist-plot",
-                    style={
-                        "backgroundColor": dash_bgcolor,
-                        "padding": "15px 15px 15px 15px",
-                        "borderRadius": "5px",
-                        "marginTop": "15px"
-                    },
-                    children=[
-                        dcc.Graph(id="histogram"),
-                        dcc.RangeSlider(id="slider",
-                                        min=0,
-                                        max=1,
-                                        step=.01,
-                                        value=[0, 1],
-                                        marks={"0": "",
-                                               "1": ""})
-                    ]
-                ),
-
-                html.Div([
-                    html.P("""Diese Karte zeigt alle Artikel der deutschsprachigen
+    app.layout = html.Div(
+        [
+            dcc.Store(
+                id="known_entries",
+                data=point_collection_df.to_dict("records"),
+            ),
+            dcc.Store(id="location", data=init_location),
+            # Map background
+            html.Div(
+                style={
+                    "width": "100vw",
+                    "height": "100vh",
+                },
+                children=[dcc.Graph(id="map", style={"height": "100%"})],
+            ),
+            # sidebar right
+            html.Div(
+                id="sidebar",
+                style={
+                    "position": "fixed",
+                    "width": "20%",
+                    "right": "0px",
+                    "top": "15px",
+                    "marginRight": "30px",
+                    "color": "white",
+                },
+                children=[
+                    html.Div(
+                        id="hist-plot",
+                        style={
+                            "backgroundColor": dash_bgcolor,
+                            "padding": "15px 15px 15px 15px",
+                            "borderRadius": "5px",
+                            "marginTop": "15px",
+                        },
+                        children=[
+                            dcc.Graph(id="histogram"),
+                            dcc.RangeSlider(
+                                id="slider",
+                                min=0,
+                                max=1,
+                                step=0.01,
+                                value=[0, 1],
+                                marks={"0": "", "1": ""},
+                            ),
+                        ],
+                    ),
+                    html.Div(
+                        [
+                            html.P(
+                                """Diese Karte zeigt alle Artikel der deutschsprachigen
 Wikipedia, die mit Geodaten verbunden sind und in dieser Gegend verortet sind.
 Farbe und Größe entsprechen der Zahl der Aufrufe in den letzten 30 Tagen.
 Klicken Sie auf einen Punkt, um eine Artikelvorschau zu sehen. Das Histogramm
 oben rechts zeigt die Verteilung der Aufrufstatistik für alle aktuell
-angezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe."""),
-                html.P("""Die API der Wikipedia ist in der Bandbreite
+angezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe."""
+                            ),
+                            html.P(
+                                """Die API der Wikipedia ist in der Bandbreite
 beschränkt und erlaubt nur den Abruf von Artikeln im Umkreis von 10 km oder
 maximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen
-Version.""")],
-                    style={
-                        "backgroundColor": dash_bgcolor,
-                        "padding": "15px 15px 15px 15px",
-                        "borderRadius": "5px",
-                        "marginTop": "15px",
-                        "max-height": "50vh",
-                        "overflow-y": "scroll"
-                    },
-                    id="preview"
-                ),
-
-            ]),
-
-        html.Div(
-            id="viewhistory",
-            style={'position': "fixed",
-                   'width': "20%",
-                   'left': "0px",
-                   'top': "15px",
-                   'marginLeft': "30px",
-                   'color': "white",
-                   "backgroundColor": dash_bgcolor,
-                   "borderRadius": "5px",
-                   "padding": "15px 15px 15px 15px",
-                   "marginTop": "15px",
-                   "max-height": "50vh",
-                   "overflow-y": "scroll"},
-        ),
-
-        html.Div(
-            id="switch_language",
-            style={'position': "fixed",
-                   'left': "50vw",
-                   'top': "15px",
-                   'color': "white",
-                   "borderRadius": "5px",
-                   "marginTop": "15px",
-                   },
-            children=[
-                html.A(
-                    href="https://enormousdingo.pythonanywhere.com",
-                    children=[
-                        html.Img(
-                            src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
-                            width="50px")]
-                )]
-        )
-    ])
+Version."""
+                            ),
+                        ],
+                        style={
+                            "backgroundColor": dash_bgcolor,
+                            "padding": "15px 15px 15px 15px",
+                            "borderRadius": "5px",
+                            "marginTop": "15px",
+                            "max-height": "50vh",
+                            "overflow-y": "scroll",
+                        },
+                        id="preview",
+                    ),
+                ],
+            ),
+            html.Div(
+                id="viewhistory",
+                style={
+                    "position": "fixed",
+                    "width": "20%",
+                    "left": "0px",
+                    "top": "15px",
+                    "marginLeft": "30px",
+                    "color": "white",
+                    "backgroundColor": dash_bgcolor,
+                    "borderRadius": "5px",
+                    "padding": "15px 15px 15px 15px",
+                    "marginTop": "15px",
+                    "max-height": "50vh",
+                    "overflow-y": "scroll",
+                },
+            ),
+            html.Div(
+                id="switch_language",
+                style={
+                    "position": "fixed",
+                    "left": "50vw",
+                    "top": "15px",
+                    "color": "white",
+                    "borderRadius": "5px",
+                    "marginTop": "15px",
+                },
+                children=[
+                    html.A(
+                        href="https://enormousdingo.pythonanywhere.com",
+                        children=[
+                            html.Img(
+                                src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
+                                width="50px",
+                            )
+                        ],
+                    )
+                ],
+            ),
+        ]
+    )
 
     init_callbacks(app)
 
@@ -167,7 +169,7 @@ def init_callbacks(app):
         """
         pageid = click_data["points"][0]["customdata"][2]
         article_preview = get_article_preview(pageid)
-        
+
         return article_preview
 
     @app.callback(
@@ -177,7 +179,7 @@ def init_callbacks(app):
         Input("slider", "value"),
         Input("map", "relayoutData"),
         State("known_entries", "data"),  # currently known points
-        State("location", "data")
+        State("location", "data"),
     )
     def update_app(
         slider_std,  # list: [float, float]; range 0..1
@@ -202,10 +204,7 @@ def init_callbacks(app):
 
         # absolute view numbers from standardized slider values:
         view_range = tuple(
-            map(
-                lambda x: x * np.max(points_df_post.log_views),
-                slider_std
-            )
+            map(lambda x: x * np.max(points_df_post.log_views), slider_std)
         )
 
         # render the map:
