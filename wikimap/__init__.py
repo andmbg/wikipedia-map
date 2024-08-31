@@ -151,7 +151,7 @@ Version."""
 
     init_callbacks(app)
 
-    return app.server
+    return app#.server
 
 
 def init_callbacks(app):
