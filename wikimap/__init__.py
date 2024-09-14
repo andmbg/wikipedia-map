@@ -94,8 +94,7 @@ angezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe.""")
                             html.P(
                                 t("""Die API der Wikipedia ist in der Bandbreite
 beschränkt und erlaubt nur den Abruf von Artikeln im Umkreis von 10 km oder
-maximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen
-Version.""")
+maximal 500 Artikel pro Aufruf.""")
                             ),
                         ],
                         style={
