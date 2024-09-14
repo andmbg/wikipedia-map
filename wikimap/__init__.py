@@ -110,28 +110,6 @@ Version.""")
                     ),
                 ],
             ),
-            html.Div(
-                id="switch_language",
-                style={
-                    "position": "fixed",
-                    "left": "50vw",
-                    "top": "15px",
-                    "color": "white",
-                    "borderRadius": "5px",
-                    "marginTop": "15px",
-                },
-                children=[
-                    html.A(
-                        href="https://enormousdingo.pythonanywhere.com",
-                        children=[
-                            html.Img(
-                                src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_United_Kingdom_and_Germany.svg",
-                                width="50px",
-                            )
-                        ],
-                    )
-                ],
-            ),
         ]
     )
 
