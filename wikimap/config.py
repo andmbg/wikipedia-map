@@ -3,7 +3,7 @@ language_codes = {
     "de": "DE",
     "en": "EN-GB",
 }
-current_language = "en"
+current_language = "de"
 
 url = {
     "de": "https://de.wikipedia.org/w/api.php",
