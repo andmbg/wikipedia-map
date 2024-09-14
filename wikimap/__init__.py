@@ -8,14 +8,17 @@ import numpy as np
 import re
 
 from .src.utils import render_histogram, get_or_extend_df, get_map, get_article_preview
-
-pd.options.mode.use_inf_as_na = True  # deprecated TODO: inf zu NA konvertieren
-df = None
+from .src.i18n import translate as t
+from .src.language_context import language_context
+from .config import current_language
 
 
 def init_dashboard(
     flask_app, route, init_location={"lat": 52.516389, "lon": 13.377778}
 ):
+
+    language_context.set_language(current_language)
+
     app = Dash(
         __name__,
         server=flask_app,
@@ -81,18 +84,18 @@ def init_dashboard(
                     html.Div(
                         [
                             html.P(
-                                """Diese Karte zeigt alle Artikel der deutschsprachigen
+                                t("""Diese Karte zeigt alle Artikel der deutschsprachigen
 Wikipedia, die mit Geodaten verbunden sind und in dieser Gegend verortet sind.
 Farbe und Größe entsprechen der Zahl der Aufrufe in den letzten 30 Tagen.
 Klicken Sie auf einen Punkt, um eine Artikelvorschau zu sehen. Das Histogramm
 oben rechts zeigt die Verteilung der Aufrufstatistik für alle aktuell
-angezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe."""
+angezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe.""")
                             ),
                             html.P(
-                                """Die API der Wikipedia ist in der Bandbreite
+                                t("""Die API der Wikipedia ist in der Bandbreite
 beschränkt und erlaubt nur den Abruf von Artikeln im Umkreis von 10 km oder
 maximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen
-Version."""
+Version.""")
                             ),
                         ],
                         style={
@@ -106,23 +109,6 @@ Version."""
                         id="preview",
                     ),
                 ],
-            ),
-            html.Div(
-                id="viewhistory",
-                style={
-                    "position": "fixed",
-                    "width": "20%",
-                    "left": "0px",
-                    "top": "15px",
-                    "marginLeft": "30px",
-                    "color": "white",
-                    "backgroundColor": dash_bgcolor,
-                    "borderRadius": "5px",
-                    "padding": "15px 15px 15px 15px",
-                    "marginTop": "15px",
-                    "max-height": "50vh",
-                    "overflow-y": "scroll",
-                },
             ),
             html.Div(
                 id="switch_language",

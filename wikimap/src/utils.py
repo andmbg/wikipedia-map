@@ -9,28 +9,29 @@ import plotly.express as px
 from plotly.graph_objects import Figure
 from dash import html
 
+from ..config import url, current_language
+from .i18n import translate as t
+from .language_context import language_context
+
 
 colorscale = [
-    (.00, "#0187c2"),
-    (.46, "#5837ff"),
-    (.58, "#8f50dc"),
-    (.75, "#b162ae"),
-    (.84, "#ff7674"),
-    (.95, "#ffaf72"),
-    (1.0, "#fff96b")
+    (0.00, "#0187c2"),
+    (0.46, "#5837ff"),
+    (0.58, "#8f50dc"),
+    (0.75, "#b162ae"),
+    (0.84, "#ff7674"),
+    (0.95, "#ffaf72"),
+    (1.0, "#fff96b"),
 ]
 
 
-def get_pagelist_around_location(lat, lon,
-                                 radius=10000, gslimit=500
-                                 ) -> pd.DataFrame:
+def get_pagelist_around_location(
+    lat, lon, radius=10000, gslimit=500, url=url
+) -> pd.DataFrame:
     """
     From a coordinate pair, get all pages located around it.
     Result shape: df[["pageid", "title", "lat", "lon"]]
     """
-
-    url = "https://de.wikipedia.org/w/api.php"
-
     query_params = dict(
         action="query",
         format="json",
@@ -38,7 +39,7 @@ def get_pagelist_around_location(lat, lon,
         formatversion="2",
         gscoord=f"{str(lat)}|{str(lon)}",
         gsradius=str(radius),
-        gslimit=str(gslimit)
+        gslimit=str(gslimit),
     )
 
     response = requests.get(url, params=query_params)
@@ -49,9 +50,8 @@ def get_pagelist_around_location(lat, lon,
     return pagelist.set_index("pageid")
 
 
-def api_request(ids, days):
+def api_request(ids, days, url=url):
 
-    url = "https://de.wikipedia.org/w/api.php"
     page_id_str = "|".join(map(str, ids[0:50]))
 
     query_params = {
@@ -60,7 +60,7 @@ def api_request(ids, days):
         "prop": "pageviews",
         "pvipdays": str(days),
         "pageids": page_id_str,
-        "formatversion": "2"
+        "formatversion": "2",
     }
     response = requests.get(url, params=query_params)
     response_dict = json.loads(response.text)
@@ -79,7 +79,7 @@ def api_request(ids, days):
 
 def _shorten(ls, chunksize=50):
     if len(ls) >= chunksize:
-        return ls[50:len(ls)]
+        return ls[50 : len(ls)]
     else:
         return []
 
@@ -107,7 +107,8 @@ def get_or_extend_df(known_data, lat, lon, radius=10000, gslimit=500):
         pagelist = get_pagelist_around_location(lat, lon, radius)
         viewdata = pagelist.join(query_viewcounts(pagelist.index))
         viewdata["log_views"] = list(
-            map(lambda x: 0 if x == 0 else np.log2(x), viewdata.views))
+            map(lambda x: 0 if x == 0 else np.log2(x), viewdata.views)
+        )
 
         return viewdata
 
@@ -125,66 +126,54 @@ def get_or_extend_df(known_data, lat, lon, radius=10000, gslimit=500):
 
     else:
         new_data = new_pagelist_filtered.join(
-            query_viewcounts(new_pagelist_filtered.index))
+            query_viewcounts(new_pagelist_filtered.index)
+        )
         new_data["log_views"] = list(
-            map(lambda x: 0 if x == 0 else np.log2(x), new_data.views))
+            map(lambda x: 0 if x == 0 else np.log2(x), new_data.views)
+        )
         viewdata = pd.concat([known_data, new_data])
 
     return viewdata
 
 
-def get_article_preview(pageid) -> html.P:
+def get_article_preview(pageid, url=url) -> html.P:
     """
     From a pageid, return a dash.html.P element containing the first couple of sentences of the article
     behind the pageid, retrieved from Wikipedia.
     """
-    url = "https://de.wikipedia.org/w/api.php"
+    language_context.set_language(current_language)
+
     query_params = {
         "action": "query",
         "format": "json",
         "prop": "pageimages|cirrusdoc",
         "pageids": str(pageid),
         "formatversion": "2",
-        "cdincludes": "all"
+        "cdincludes": "all",
     }
 
     response = requests.get(url, params=query_params)
     response_dict = json.loads(response.text)
     pagetext = (
-        response_dict
-        .get("query")
+        response_dict.get("query")
         .get("pages")[0]
         .get("cirrusdoc")[0]
         .get("source")
         .get("text")
     )
-    
-    abstract = shorten(pagetext, 500)
-    
-    # the title
-    title = (
-        response_dict
-        .get("query")
-        .get("pages")[0]
-        .get("title")
-    )
-    article_hyperlink = html.A(
-        href=f"https://de.wikipedia.org/wiki/{title}",
-        children="zum Artikel"
-    )
 
-    article_preview = [
-        html.P(abstract),
-        article_hyperlink
-    ]
+    abstract = shorten(pagetext, 500)
+
+    # the title
+    title = response_dict.get("query").get("pages")[0].get("title")
+
+    article_url = url.replace("w/api.php", "wiki/") + title
+    article_hyperlink = html.A(href=article_url, children=t("zum Artikel"))
+
+    article_preview = [html.P(abstract), article_hyperlink]
 
     # does the response give an image to the article?
-    wiki_image_link = (
-        response_dict
-        .get("query")
-        .get("pages")[0]
-        .get("pageimage")
-    )
+    wiki_image_link = response_dict.get("query").get("pages")[0].get("pageimage")
 
     # if image exists, request and include it; else ignore:
     if wiki_image_link is not None:
@@ -194,25 +183,35 @@ def get_article_preview(pageid) -> html.P:
             "prop": "imageinfo",
             "iiprop": "url",
             "titles": "Datei:" + wiki_image_link,
-            "formatversion": "2"
+            "formatversion": "2",
         }
 
         img_response = requests.get(url, params=image_query_params)
-        img_url = (
-            json.loads(img_response.text)
-            .get("query")
-            .get("pages")[0]
-            .get("imageinfo")[0]
-            .get("url")
-        )
+
+        print(img_response.text)
+
+        try:
+            img_url = (
+                json.loads(img_response.text)
+                .get("query")
+                .get("pages")[0]
+                .get("imageinfo")[0]
+                .get("url")
+            )
+        except:
+            img_url = ""
 
         article_preview.insert(
             0,
-            html.Img(src=img_url,
-                     style={"width": "80%",
-                            "marginLeft": "auto",
-                            "marginRight": "auto",
-                            "display": "block"})
+            html.Img(
+                src=img_url,
+                style={
+                    "width": "80%",
+                    "marginLeft": "auto",
+                    "marginRight": "auto",
+                    "display": "block",
+                },
+            ),
         )
 
     return article_preview
@@ -225,9 +224,9 @@ def get_map(
 ):
     # filter to the view range:
     plot_df = (
-        point_collection_df
-        .query("log_views >= @view_range[0] &"
-               "log_views <= @view_range[1]")
+        point_collection_df.query(
+            "log_views >= @view_range[0] &" "log_views <= @view_range[1]"
+        )
         .reset_index()
         .rename({"index": "pageid"}, axis=1)
     )
@@ -249,22 +248,16 @@ def get_map(
         hover_name="title",
         hover_data=["views"],
         mapbox_style="carto-darkmatter",
-        center={"lat": location["lat"],
-                "lon": location["lon"]},
-        zoom=15
+        center={"lat": location["lat"], "lon": location["lon"]},
+        zoom=15,
     )
 
-    fig.update_layout(
-        margin=dict(t=0, r=0, b=0, l=0),
-        coloraxis_showscale=False
-    )
+    fig.update_layout(margin=dict(t=0, r=0, b=0, l=0), coloraxis_showscale=False)
     fig.update_traces(
         marker_sizemode="area",
         marker_sizeref=5,
         marker_sizemin=3,
-        customdata=np.stack(
-            [plot_df.title, plot_df.views, plot_df.pageid]
-        ).transpose()
+        customdata=np.stack([plot_df.title, plot_df.views, plot_df.pageid]).transpose(),
     )
 
     fig["data"][0]["hovertemplate"] = (
@@ -278,11 +271,7 @@ def get_map(
     return fig
 
 
-def render_histogram(
-    viewdata,
-    bins=20,
-    view_range=()
-) -> Figure:
+def render_histogram(viewdata, bins=20, view_range=()) -> Figure:
     """
     Bin view data and plot as histogram.
 
@@ -300,21 +289,20 @@ def render_histogram(
     binlefts = boundaries[:-1]
     binrights = boundaries[1:]
 
-    hist_df = pd.DataFrame({
-        "binleft": binlefts,
-        "binright": binrights,
-        "bincenter": bincenters,
-        "count": counts,
-        "selected": True  # updated below
-    })
+    hist_df = pd.DataFrame(
+        {
+            "binleft": binlefts,
+            "binright": binrights,
+            "bincenter": bincenters,
+            "count": counts,
+            "selected": True,  # updated below
+        }
+    )
 
     # column marking opaque bars:
-    selected = (
-        (hist_df.binleft >= view_range[0])
-        & (hist_df.binright <= view_range[1])
-    )
+    selected = (hist_df.binleft >= view_range[0]) & (hist_df.binright <= view_range[1])
     # translate to opacity values:
-    opacitymap = [1. if s else .4 for s in selected]
+    opacitymap = [1.0 if s else 0.4 for s in selected]
 
     fig = px.bar(
         hist_df,
@@ -324,31 +312,26 @@ def render_histogram(
         color_continuous_scale=colorscale,
         opacity=opacitymap,
         template="plotly_dark",
-        height=150
+        height=150,
     )
 
     fig.update_layout(
         margin=dict(t=0, r=0, b=0, l=0),
-        xaxis=dict(
-            title=None,
-            tickvals=[]
-        ),
-        yaxis=dict(
-            title=None,
-            tickvals=[]
-        ),
+        xaxis=dict(title=None, tickvals=[]),
+        yaxis=dict(title=None, tickvals=[]),
         coloraxis_showscale=False,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        bargap=0
+        bargap=0,
     )
 
-    hist_hover = pd.DataFrame([np.round(np.exp2(hist_df.binleft), 0),
-                               np.round(np.exp2(hist_df.binright), 0)]).transpose()
+    hist_hover = pd.DataFrame(
+        [np.round(np.exp2(hist_df.binleft), 0), np.round(np.exp2(hist_df.binright), 0)]
+    ).transpose()
     fig.update_traces(
         marker_line_width=0,
         customdata=hist_hover,
-        hovertemplate="%{customdata[0]}-%{customdata[1]} Aufrufe: %{y} versch. Orte"
+        hovertemplate="%{customdata[0]}-%{customdata[1]} Aufrufe: %{y} versch. Orte",
     )
 
     return fig

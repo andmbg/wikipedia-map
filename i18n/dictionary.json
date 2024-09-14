@@ -1,0 +1,17 @@
+{
+    "lorem": {
+        "EN-GB": "ipsum"
+    },
+    "Diese Karte zeigt alle Artikel der deutschsprachigen\nWikipedia, die mit Geodaten verbunden sind und in dieser Gegend verortet sind.\nFarbe und Größe entsprechen der Zahl der Aufrufe in den letzten 30 Tagen.\nKlicken Sie auf einen Punkt, um eine Artikelvorschau zu sehen. Das Histogramm\noben rechts zeigt die Verteilung der Aufrufstatistik für alle aktuell\nangezeigten Artikel und erlaubt das Filtern nach Häufigkeit der Aufrufe.": {
+        "EN-GB": "This map shows all articles in the German-language Wikipedia that are linked to geodata and are located in this area.Colour and size correspond to the number of views in the last 30 days.Click on a point to see a preview of the article. The histogram at the top right shows the distribution of the call statistics for all currently displayed and allows you to filter by frequency of views."
+    },
+    "Die API der Wikipedia ist in der Bandbreite beschränkt und erlaubt nur den Abruf von Artikeln im Umkreis von 10 km oder maximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen Version.": {
+        "EN-GB": "The Wikipedia API is limited in bandwidth and only allows the retrieval of articles within a radius of 10 km or a maximum of 500 articles per call. The button above leads to the English version."
+    },
+    "Die API der Wikipedia ist in der Bandbreite\nbeschränkt und erlaubt nur den Abruf von Artikeln im Umkreis von 10 km oder\nmaximal 500 Artikel pro Aufruf. Der Button oben führt zur englischsprachigen\nVersion.": {
+        "EN-GB": "The Wikipedia API is limited in bandwidth\nand only allows the retrieval of articles within a radius of 10 km or a\na maximum of 500 articles per call. The button above leads to the English\nversion."
+    },
+    "zum Artikel": {
+        "EN-GB": "Visit article"
+    }
+}
